@@ -1,0 +1,30 @@
+---
+
+### **Part 2: Step-by-Step Instructions to Open the App**
+
+If you (or anyone else) download this folder later, here is exactly how to start it up.
+
+#### **Step 1: Open the Backend (The Brain)**
+1.  Open your folder (`boom`) in VS Code or File Explorer.
+2.  Right-click the `backend` folder and select **"Open in Terminal"**.
+3.  Type this command and hit Enter:
+    ```bash
+    python -m uvicorn main:app --reload
+    ```
+4.  **Wait** until you see: `Application startup complete`.
+5.  **Keep this terminal open!** (Do not close it).
+
+#### **Step 2: Open the Frontend (The Face)**
+1.  Go back to your folder.
+2.  Right-click the `frontend` folder and select **"Open in Terminal"**.
+3.  Type this command and hit Enter:
+    ```bash
+    npm start
+    ```
+4.  Your web browser should automatically open to `http://localhost:3000`.
+
+#### **Step 3: Use the App**
+1.  **Search:** Type "Bitcoin" or "Python (programming language)" in the search bar.
+2.  **Theme:** Click the paint palette icon in the top right to change colors (Try "Cyberpunk"!).
+3.  **Predict:** Use the sliders at the bottom to see further into the future.
+4.  **Download:** Click "Save PNG" to save your graph.
