@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- THEME ENGINE --- */
+:root {
+  /* Default Variables (Overwritten by themes) */
+  --bg-primary: #0B0F19;
+  --bg-secondary: #121620;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --accent-primary: #3B82F6;
+  --accent-secondary: #A855F7;
+  --border-color: #1f2937;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --neon-glow: 0 0 20px rgba(168, 85, 247, 0.5);
+  --bg-gradient: none; /* For animated themes */
+}
+
+/* 1. MIDNIGHT (Default Dark) */
+[data-theme='midnight'] {
+  --bg-primary: #0B0F19;
+  --bg-secondary: #121620;
+  --text-primary: #ffffff;
+  --text-secondary: #94a3b8;
+  --accent-primary: #3B82F6; /* Blue */
+  --accent-secondary: #A855F7; /* Purple */
+  --border-color: #1e293b;
+}
+
+/* 2. MATTE (Clean Light) */
+[data-theme='matte'] {
+  --bg-primary: #F1F5F9;
+  --bg-secondary: #FFFFFF;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --accent-primary: #2563EB;
+  --accent-secondary: #7C3AED;
+  --border-color: #cbd5e1;
+  --glass-bg: rgba(255, 255, 255, 0.5);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --neon-glow: none;
+}
+
+/* 3. SUNSET (Moving Gradient) */
+[data-theme='sunset'] {
+  --bg-primary: #2a1b3d; /* Fallback */
+  --bg-secondary: rgba(20, 10, 30, 0.6);
+  --text-primary: #ffe4e6;
+  --text-secondary: #fda4af;
+  --accent-primary: #fb7185; /* Rose */
+  --accent-secondary: #f472b6; /* Pink */
+  --border-color: #881337;
+  --glass-bg: rgba(0, 0, 0, 0.3);
+  --bg-gradient: linear-gradient(-45deg, #4c1d95, #be185d, #b91c1c, #4338ca);
+  --neon-glow: 0 0 20px rgba(251, 113, 133, 0.6);
+}
+
+/* 4. FOREST (Deep Green) */
+[data-theme='forest'] {
+  --bg-primary: #052e16;
+  --bg-secondary: #064e3b;
+  --text-primary: #ecfdf5;
+  --text-secondary: #6ee7b7;
+  --accent-primary: #10b981; /* Emerald */
+  --accent-secondary: #34d399;
+  --border-color: #065f46;
+  --neon-glow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+/* 5. CYBERPUNK (Moving Gradient) */
+[data-theme='cyberpunk'] {
+  --bg-primary: #000000;
+  --bg-secondary: #111111;
+  --text-primary: #facc15; /* Yellow */
+  --text-secondary: #22d3ee; /* Cyan */
+  --accent-primary: #e11d48; /* Neon Red */
+  --accent-secondary: #facc15;
+  --border-color: #333333;
+  --bg-gradient: linear-gradient(-45deg, #0f172a, #312e81, #000000);
+  --neon-glow: 0 0 15px rgba(250, 204, 21, 0.8);
+}
+
+/* 6. OCEAN (Deep Blue) */
+[data-theme='ocean'] {
+  --bg-primary: #0c4a6e;
+  --bg-secondary: #075985;
+  --text-primary: #f0f9ff;
+  --text-secondary: #7dd3fc;
+  --accent-primary: #38bdf8;
+  --accent-secondary: #0ea5e9;
+  --border-color: #0369a1;
+}
+
+body {
+  background-color: var(--bg-primary);
+  background-image: var(--bg-gradient);
+  background-size: 400% 400%; /* For animation */
+  color: var(--text-primary);
+  transition: all 0.5s ease;
+}
+
+/* Trigger animation only if gradient exists */
+body[data-theme='sunset'], body[data-theme='cyberpunk'] {
+  animation: gradientBG 15s ease infinite;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Utilities */
+.bg-theme-secondary { background-color: var(--bg-secondary); }
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.border-theme { border-color: var(--border-color); }
+
+@layer utilities {
+  .bg-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+  }
+  .title-glow {
+    text-shadow: var(--neon-glow);
+  }
+  /* FIX FOR CLIPPED 'g' */
+  .title-text {
+    padding-bottom: 0.1em; /* Adds space for descenders */
+    line-height: 1.1;
+  }
+}
