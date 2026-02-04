@@ -122,6 +122,15 @@ def _build_forecast(history_points, horizon=6):
         forecast.append({"date": future_date, "price": prediction})
     return forecast
 
+def _upsert_history_point(history_points, date_key, price):
+    index_lookup = {point["date"]: idx for idx, point in enumerate(history_points)}
+    if date_key in index_lookup:
+        history_points[index_lookup[date_key]]["price"] = price
+    else:
+        history_points.append({"date": date_key, "price": price})
+    history_points.sort(key=lambda point: point["date"])
+    return history_points
+
 def _fetch_sales_events(site):
     sources = {
         "amazon": ["https://www.amazon.in/events/greatindianfestival"],
@@ -249,10 +258,9 @@ async def get_price_track(url: str):
     history = _load_price_history()
     history_points = history.get(url, [])
     today = datetime.datetime.now().strftime("%Y-%m-%d")
-    if not history_points or history_points[-1]["date"] != today:
-        history_points.append({"date": today, "price": price})
-        history[url] = history_points
-        _save_price_history(history)
+    history_points = _upsert_history_point(history_points, today, price)
+    history[url] = history_points
+    _save_price_history(history)
 
     forecast = _build_forecast(history_points)
     sales = _fetch_sales_events(site)
