@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Github, Instagram, Globe, ArrowLeft, Sun, Moon } from 'lucide-react';
+import { Github, Instagram, Globe, ArrowLeft } from 'lucide-react';
 
 const Creators = ({ currentTheme }) => {
   const team = [

@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Cpu, Database, Activity, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Cpu, Database, Activity } from 'lucide-react';
 
 // Accept theme props
-const About = ({ toggleTheme, isDark }) => {
+const About = () => {
   return (
     <motion.div initial={{ x: 100, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -100, opacity: 0 }}
       className="min-h-screen p-8 font-sans text-theme-primary"
@@ -14,9 +14,6 @@ const About = ({ toggleTheme, isDark }) => {
         <Link to="/" className="flex items-center gap-2 text-theme-secondary hover:text-theme-primary transition-colors">
           <ArrowLeft size={20}/> Back to Home
         </Link>
-         <button onClick={toggleTheme} className="p-2 rounded-full bg-theme-secondary border border-theme hover:bg-glass transition-all">
-            {isDark ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-blue-400" />}
-        </button>
       </nav>
 
       <div className="max-w-3xl mx-auto">

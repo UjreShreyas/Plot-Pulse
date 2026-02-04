@@ -4,13 +4,17 @@ import { AnimatePresence } from 'framer-motion';
 import Home from './pages/Home';
 import About from './pages/About';
 import Creators from './pages/Creators';
+import Landing from './pages/Landing';
+import PriceTracker from './pages/PriceTracker';
 
 const AnimatedRoutes = ({ currentTheme, setTheme }) => {
   const location = useLocation();
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<Home currentTheme={currentTheme} setTheme={setTheme} />} />
+        <Route path="/" element={<Landing currentTheme={currentTheme} setTheme={setTheme} />} />
+        <Route path="/wiki" element={<Home currentTheme={currentTheme} setTheme={setTheme} />} />
+        <Route path="/price-tracker" element={<PriceTracker />} />
         <Route path="/about" element={<About currentTheme={currentTheme} />} />
         <Route path="/creators" element={<Creators currentTheme={currentTheme} />} />
       </Routes>
