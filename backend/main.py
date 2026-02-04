@@ -8,7 +8,6 @@ import json
 import re
 from pathlib import Path
 from urllib.parse import urlparse
-from bs4 import BeautifulSoup
 
 app = FastAPI()
 
@@ -66,35 +65,33 @@ def _extract_price(text):
     return float(match.group(1))
 
 def _parse_amazon(html):
-    soup = BeautifulSoup(html, "html.parser")
-    title = soup.select_one("#productTitle")
-    title_text = title.get_text(strip=True) if title else "Amazon Product"
-    selectors = [
-        "#priceblock_ourprice",
-        "#priceblock_dealprice",
-        "#priceblock_saleprice",
-        "span.a-price span.a-offscreen",
+    title_match = re.search(r'id="productTitle"[^>]*>([^<]+)</', html, re.IGNORECASE)
+    title_text = title_match.group(1).strip() if title_match else "Amazon Product"
+    price_patterns = [
+        r'id="priceblock_ourprice"[^>]*>([^<]+)</',
+        r'id="priceblock_dealprice"[^>]*>([^<]+)</',
+        r'id="priceblock_saleprice"[^>]*>([^<]+)</',
+        r'class="a-price-whole"[^>]*>([^<]+)</',
     ]
     price = None
-    for selector in selectors:
-        node = soup.select_one(selector)
-        price = _extract_price(node.get_text(strip=True) if node else None)
+    for pattern in price_patterns:
+        match = re.search(pattern, html, re.IGNORECASE)
+        price = _extract_price(match.group(1)) if match else None
         if price:
             break
     return title_text, price
 
 def _parse_flipkart(html):
-    soup = BeautifulSoup(html, "html.parser")
-    title = soup.select_one("span.B_NuCI")
-    title_text = title.get_text(strip=True) if title else "Flipkart Product"
-    selectors = [
-        "div._30jeq3",
-        "div._16Jk6d",
+    title_match = re.search(r'class="B_NuCI"[^>]*>([^<]+)</', html, re.IGNORECASE)
+    title_text = title_match.group(1).strip() if title_match else "Flipkart Product"
+    price_patterns = [
+        r'class="_30jeq3[^"]*"[^>]*>([^<]+)</',
+        r'class="_16Jk6d"[^>]*>([^<]+)</',
     ]
     price = None
-    for selector in selectors:
-        node = soup.select_one(selector)
-        price = _extract_price(node.get_text(strip=True) if node else None)
+    for pattern in price_patterns:
+        match = re.search(pattern, html, re.IGNORECASE)
+        price = _extract_price(match.group(1)) if match else None
         if price:
             break
     return title_text, price
@@ -108,7 +105,7 @@ def _infer_site(url):
     return "unknown"
 
 def _build_forecast(history_points, horizon=6):
-    if len(history_points) < 2:
+    if not history_points:
         return []
     y_values = [point["price"] for point in history_points]
     x_values = list(range(len(y_values)))
@@ -143,8 +140,8 @@ def _fetch_sales_events(site):
             )
             if response.status_code != 200:
                 continue
-            soup = BeautifulSoup(response.text, "html.parser")
-            page_title = soup.title.get_text(strip=True) if soup.title else None
+            title_match = re.search(r"<title[^>]*>(.*?)</title>", response.text, re.IGNORECASE | re.DOTALL)
+            page_title = title_match.group(1).strip() if title_match else None
             date_match = re.search(r"(\\b\\w+\\s+\\d{1,2}\\b.*?\\b\\d{1,2}\\b)", response.text)
             if page_title:
                 events.append({

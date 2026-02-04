@@ -3,4 +3,3 @@ uvicorn
 pandas
 prophet
 requests
-beautifulsoup4

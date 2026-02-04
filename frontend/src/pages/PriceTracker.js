@@ -41,7 +41,7 @@ const PriceTracker = () => {
       lowestPrice,
       nextDropDate: nextDrop?.date,
       nextDropPrice: nextDrop?.price,
-      confidence: forecast.length > 1 ? 'Model-based' : 'Gathering data',
+      confidence: forecast.length > 1 ? 'Model-based' : 'Baseline',
     };
   }, [pricePayload]);
 
@@ -137,9 +137,18 @@ const PriceTracker = () => {
             <div className="bg-theme-secondary border border-theme rounded-3xl p-6 shadow-xl">
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-theme-primary">{pricePayload.product?.title}</h2>
-                <p className="text-sm text-theme-secondary">
-                  Live pricing from {pricePayload.product?.site?.toUpperCase()} · {pricePayload.product?.url}
-                </p>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-theme-secondary">
+                  <span>Live pricing from {pricePayload.product?.site?.toUpperCase()}</span>
+                  <span>·</span>
+                  <a
+                    href={pricePayload.product?.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-theme-primary hover:underline block max-w-xs truncate"
+                  >
+                    {pricePayload.product?.url}
+                  </a>
+                </div>
               </div>
               <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-1 h-[360px] bg-glass border border-theme rounded-2xl p-4">
@@ -185,7 +194,7 @@ const PriceTracker = () => {
                     value={
                       insights.nextDropDate
                         ? `${insights.nextDropDate} · ₹${insights.nextDropPrice.toLocaleString('en-IN')}`
-                        : 'Collecting more data'
+                        : 'Forecast unavailable'
                     }
                     icon={<Calendar size={18} className="text-green-500" />}
                   />
