@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft, ArrowRight, Calendar, Link2, Percent, Sparkles, Tag } from 'lucide-react';
@@ -8,38 +9,30 @@ const PriceTracker = () => {
   const [productUrl, setProductUrl] = useState('');
   const [site, setSite] = useState('amazon');
   const [submittedUrl, setSubmittedUrl] = useState('');
+  const [pricePayload, setPricePayload] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const priceData = useMemo(() => {
-    if (!submittedUrl) return [];
-    const today = new Date();
-    const historyPoints = 12;
-    const forecastPoints = 6;
-    const basePrice = site === 'amazon' ? 28999 : 26499;
-
-    return Array.from({ length: historyPoints + forecastPoints }, (_, index) => {
-      const date = new Date(today.getFullYear(), today.getMonth() - historyPoints + index, 1);
-      const seasonalWave = Math.sin(index / 2) * 1200;
-      const noise = (index % 3) * 150;
-      const historicalPrice = Math.round(basePrice + seasonalWave + noise - (index * 80));
-      const forecastPrice = Math.round(basePrice + seasonalWave - (index * 60));
-
-      return {
-        date: date.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }),
-        price: index < historyPoints ? historicalPrice : null,
-        forecast: index >= historyPoints ? forecastPrice : null,
-      };
-    });
-  }, [submittedUrl, site]);
+    if (!pricePayload) return [];
+    const history = pricePayload.history || [];
+    const forecast = pricePayload.forecast || [];
+    const combined = [...history, ...forecast];
+    return combined.map((point) => ({
+      date: point.date,
+      price: history.find((entry) => entry.date === point.date)?.price ?? null,
+      forecast: forecast.find((entry) => entry.date === point.date)?.price ?? null,
+    }));
+  }, [pricePayload]);
 
   const insights = useMemo(() => {
-    if (priceData.length === 0) return null;
-    const history = priceData.filter((point) => point.price !== null);
-    const forecast = priceData.filter((point) => point.forecast !== null);
-
-    const currentPrice = history[history.length - 1]?.price || 0;
+    if (!pricePayload?.history?.length) return null;
+    const history = pricePayload.history;
+    const forecast = pricePayload.forecast || [];
+    const currentPrice = pricePayload.current_price;
     const lowestPrice = Math.min(...history.map((point) => point.price));
     const nextDrop = forecast.reduce((acc, point) => {
-      if (!acc || point.forecast < acc.forecast) return point;
+      if (!acc || point.price < acc.price) return point;
       return acc;
     }, null);
 
@@ -47,21 +40,28 @@ const PriceTracker = () => {
       currentPrice,
       lowestPrice,
       nextDropDate: nextDrop?.date,
-      nextDropPrice: nextDrop?.forecast,
-      confidence: site === 'amazon' ? 'High' : 'Moderate',
+      nextDropPrice: nextDrop?.price,
+      confidence: forecast.length > 1 ? 'Model-based' : 'Gathering data',
     };
-  }, [priceData, site]);
+  }, [pricePayload]);
 
-  const upcomingSales = [
-    { name: 'Great Indian Festival', date: 'Oct 10 - Oct 15', tag: 'Amazon' },
-    { name: 'Big Billion Days', date: 'Sep 28 - Oct 5', tag: 'Flipkart' },
-    { name: 'Year-End Clearance', date: 'Dec 20 - Dec 31', tag: 'Both' },
-  ];
-
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     if (!productUrl) return;
-    setSubmittedUrl(productUrl.trim());
+    setLoading(true);
+    setError('');
+    const cleanedUrl = productUrl.trim();
+    setSubmittedUrl(cleanedUrl);
+    try {
+      const response = await axios.get('http://localhost:8000/price-track', {
+        params: { url: cleanedUrl },
+      });
+      setPricePayload(response.data);
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Unable to fetch live pricing. Please try again.');
+      setPricePayload(null);
+    }
+    setLoading(false);
   };
 
   return (
@@ -118,19 +118,29 @@ const PriceTracker = () => {
             </div>
             <button
               type="submit"
+              disabled={loading}
               className="flex items-center justify-center gap-2 bg-theme-primary text-theme-primary border border-theme rounded-2xl px-6 py-3 hover:brightness-110 transition-all"
             >
-              Analyze <ArrowRight size={18} />
+              {loading ? 'Fetching...' : 'Analyze'} <ArrowRight size={18} />
             </button>
           </div>
-          <p className="text-xs text-theme-secondary mt-3">
-            We use a demo dataset until live pricing APIs are connected.
-          </p>
         </form>
 
-        {submittedUrl && insights && (
+        {error && (
+          <div className="mb-8 text-red-400 bg-red-400/10 py-2 px-4 rounded-lg inline-block border border-red-400/20">
+            {error}
+          </div>
+        )}
+
+        {submittedUrl && insights && pricePayload && (
           <div className="space-y-10">
             <div className="bg-theme-secondary border border-theme rounded-3xl p-6 shadow-xl">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-theme-primary">{pricePayload.product?.title}</h2>
+                <p className="text-sm text-theme-secondary">
+                  Live pricing from {pricePayload.product?.site?.toUpperCase()} · {pricePayload.product?.url}
+                </p>
+              </div>
               <div className="flex flex-col lg:flex-row gap-8">
                 <div className="flex-1 h-[360px] bg-glass border border-theme rounded-2xl p-4">
                   <ResponsiveContainer width="100%" height="100%">
@@ -147,7 +157,7 @@ const PriceTracker = () => {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
                       <XAxis dataKey="date" stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} minTickGap={24} />
-                      <YAxis stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} tickFormatter={(value) => `₹${(value / 1000).toFixed(0)}k`} />
+                      <YAxis stroke="var(--text-secondary)" tick={{ fill: 'var(--text-secondary)' }} tickFormatter={(value) => `₹${value}`} />
                       <Tooltip
                         contentStyle={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
                         itemStyle={{ color: 'var(--text-primary)' }}
@@ -172,7 +182,11 @@ const PriceTracker = () => {
                   />
                   <InsightCard
                     title="Next Predicted Dip"
-                    value={`${insights.nextDropDate} · ₹${insights.nextDropPrice.toLocaleString('en-IN')}`}
+                    value={
+                      insights.nextDropDate
+                        ? `${insights.nextDropDate} · ₹${insights.nextDropPrice.toLocaleString('en-IN')}`
+                        : 'Collecting more data'
+                    }
                     icon={<Calendar size={18} className="text-green-500" />}
                   />
                   <InsightCard
@@ -188,17 +202,27 @@ const PriceTracker = () => {
             <div className="bg-theme-secondary border border-theme rounded-3xl p-6 shadow-xl">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-theme-primary">Upcoming Sales Watchlist</h2>
-                <span className="text-sm text-theme-secondary">Based on public sale calendars</span>
+                <span className="text-sm text-theme-secondary">Live sale pages</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {upcomingSales.map((sale) => (
-                  <div key={sale.name} className="bg-glass border border-theme rounded-2xl p-4">
-                    <p className="text-sm text-theme-secondary">{sale.tag}</p>
-                    <h3 className="text-lg font-semibold text-theme-primary mb-1">{sale.name}</h3>
-                    <p className="text-theme-secondary text-sm">{sale.date}</p>
-                  </div>
-                ))}
-              </div>
+              {pricePayload.sales?.length ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {pricePayload.sales.map((sale) => (
+                    <a
+                      key={sale.name}
+                      href={sale.source}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-glass border border-theme rounded-2xl p-4 hover:border-[var(--accent-primary)] transition-all"
+                    >
+                      <p className="text-sm text-theme-secondary">{sale.source}</p>
+                      <h3 className="text-lg font-semibold text-theme-primary mb-1">{sale.name}</h3>
+                      <p className="text-theme-secondary text-sm">{sale.date}</p>
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-theme-secondary text-sm">No upcoming sales detected for this site yet.</p>
+              )}
             </div>
           </div>
         )}
