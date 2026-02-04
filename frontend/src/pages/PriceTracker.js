@@ -136,7 +136,14 @@ const PriceTracker = () => {
           <div className="space-y-10">
             <div className="bg-theme-secondary border border-theme rounded-3xl p-6 shadow-xl">
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-theme-primary">{pricePayload.product?.title}</h2>
+                <h2 className="text-2xl font-bold text-theme-primary">
+                  <span
+                    className="block max-w-lg truncate"
+                    title={pricePayload.product?.title}
+                  >
+                    {pricePayload.product?.title}
+                  </span>
+                </h2>
                 <div className="flex flex-wrap items-center gap-2 text-sm text-theme-secondary">
                   <span>Live pricing from {pricePayload.product?.site?.toUpperCase()}</span>
                   <span>·</span>
