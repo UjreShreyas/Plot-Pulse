@@ -89,6 +89,8 @@ const Home = ({ currentTheme, setTheme }) => {
         <div className="flex items-center gap-6 text-sm font-medium text-theme-secondary">
             <div className="hidden md:flex gap-6">
               <Link to="/" className="text-theme-primary hover:opacity-80">Explore</Link>
+              <Link to="/wiki" className="hover:text-theme-primary transition-colors">Wiki Trends</Link>
+              <Link to="/price-tracker" className="hover:text-theme-primary transition-colors">Price Tracker</Link>
               <Link to="/creators" className="hover:text-theme-primary transition-colors">Creators</Link>
               <Link to="/about" className="hover:text-theme-primary transition-colors">About</Link>
             </div>
