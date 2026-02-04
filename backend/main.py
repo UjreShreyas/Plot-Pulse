@@ -8,6 +8,7 @@ import json
 import re
 from pathlib import Path
 from urllib.parse import urlparse
+import os
 
 app = FastAPI()
 
@@ -19,6 +20,13 @@ app.add_middleware(
 )
 
 HISTORY_PATH = Path(__file__).with_name("price_history.json")
+
+KEEPA_DOMAIN = "1"
+ALLOWED_MERCHANTS = {
+    "flipkart": ["Flipkart", "flipkart"],
+    "reliance": ["Reliance Digital", "Reliance", "RelianceDigital"],
+    "croma": ["Croma"],
+}
 
 def fetch_wikipedia_data(topic):
     # Calculate dates: Today and 4 years ago
@@ -161,6 +169,114 @@ def _fetch_sales_events(site):
         except requests.RequestException:
             continue
     return events
+
+def _normalize_price(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+def _search_keepa(query):
+    api_key = os.getenv("KEEPA_API_KEY")
+    if not api_key:
+        return []
+    response = requests.get(
+        "https://api.keepa.com/query",
+        params={
+            "key": api_key,
+            "domain": KEEPA_DOMAIN,
+            "term": query,
+            "type": "product",
+        },
+        timeout=20,
+    )
+    if response.status_code != 200:
+        return []
+    payload = response.json()
+    products = payload.get("products", [])
+    results = []
+    for product in products:
+        title = product.get("title")
+        asin = product.get("asin")
+        if not asin or not title:
+            continue
+        price_cents = None
+        if isinstance(product.get("stats"), dict):
+            price_cents = product["stats"].get("current") if "current" in product["stats"] else None
+        if price_cents is None and isinstance(product.get("csv"), list) and product["csv"]:
+            price_cents = product["csv"][0]
+        price = _normalize_price(price_cents / 100 if price_cents else None)
+        results.append({
+            "source": "Keepa",
+            "store": "Amazon",
+            "title": title,
+            "price": price,
+            "url": f"https://www.amazon.in/dp/{asin}",
+        })
+    return results
+
+def _search_shopping(query):
+    api_key = os.getenv("SERPAPI_KEY")
+    if not api_key:
+        return []
+    response = requests.get(
+        "https://serpapi.com/search.json",
+        params={
+            "engine": "google_shopping",
+            "q": query,
+            "hl": "en",
+            "gl": "in",
+            "api_key": api_key,
+        },
+        timeout=20,
+    )
+    if response.status_code != 200:
+        return []
+    payload = response.json()
+    results = []
+    for item in payload.get("shopping_results", []):
+        store = item.get("source")
+        price_text = item.get("price")
+        price = _normalize_price(_extract_price(price_text))
+        title = item.get("title")
+        link = item.get("link")
+        if not store or not title or not link:
+            continue
+        results.append({
+            "source": "SerpAPI",
+            "store": store,
+            "title": title,
+            "price": price,
+            "url": link,
+        })
+    return results
+
+def _filter_merchants(results, merchants):
+    filtered = []
+    for result in results:
+        store = result.get("store", "")
+        if any(store_name in store for store_name in merchants):
+            filtered.append(result)
+    return filtered
+
+@app.get("/product-search")
+async def product_search(query: str):
+    keepa_results = _search_keepa(query)
+    shopping_results = _search_shopping(query)
+    flipkart_results = _filter_merchants(shopping_results, ALLOWED_MERCHANTS["flipkart"])
+    reliance_results = _filter_merchants(shopping_results, ALLOWED_MERCHANTS["reliance"])
+    croma_results = _filter_merchants(shopping_results, ALLOWED_MERCHANTS["croma"])
+    combined = keepa_results + flipkart_results + reliance_results + croma_results
+    combined = [item for item in combined if item.get("price") is not None]
+    combined.sort(key=lambda item: item["price"])
+    return {
+        "query": query,
+        "results": combined,
+        "sources": {
+            "keepa_enabled": bool(os.getenv("KEEPA_API_KEY")),
+            "serpapi_enabled": bool(os.getenv("SERPAPI_KEY")),
+        },
+    }
 
 @app.get("/predict/{keyword}")
 async def get_prediction(keyword: str):

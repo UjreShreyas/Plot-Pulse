@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowLeft, ArrowRight, Calendar, Link2, Percent, Sparkles, Tag } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Calendar, Link2, Percent, Search, Sparkles, Tag } from 'lucide-react';
 
 const PriceTracker = () => {
   const [productUrl, setProductUrl] = useState('');
@@ -12,6 +12,11 @@ const PriceTracker = () => {
   const [pricePayload, setPricePayload] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searchSources, setSearchSources] = useState(null);
 
   const priceData = useMemo(() => {
     if (!pricePayload) return [];
@@ -64,6 +69,25 @@ const PriceTracker = () => {
     setLoading(false);
   };
 
+  const handleSearch = async (event) => {
+    event.preventDefault();
+    if (!searchQuery) return;
+    setSearchLoading(true);
+    setSearchError('');
+    try {
+      const response = await axios.get('http://localhost:8000/product-search', {
+        params: { query: searchQuery.trim() },
+      });
+      setSearchResults(response.data.results || []);
+      setSearchSources(response.data.sources || null);
+    } catch (err) {
+      setSearchError(err?.response?.data?.detail || 'Unable to search right now. Please try again.');
+      setSearchResults([]);
+      setSearchSources(null);
+    }
+    setSearchLoading(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -87,6 +111,73 @@ const PriceTracker = () => {
             Paste a product link to preview historic pricing, forecast the next dip, and keep tabs on upcoming sales.
           </p>
         </header>
+
+        <form onSubmit={handleSearch} className="bg-theme-secondary border border-theme rounded-3xl p-6 shadow-xl mb-10">
+          <div className="flex flex-col lg:flex-row gap-4 items-stretch">
+            <div className="flex-1 flex items-center gap-3 bg-glass border border-theme rounded-2xl px-4">
+              <Search size={18} className="text-theme-secondary" />
+              <input
+                type="text"
+                placeholder="Search product name (e.g. Redmi Note 15 Pro)"
+                className="w-full bg-transparent border-none focus:outline-none text-theme-primary py-3"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={searchLoading}
+              className="flex items-center justify-center gap-2 bg-theme-primary text-theme-primary border border-theme rounded-2xl px-6 py-3 hover:brightness-110 transition-all"
+            >
+              {searchLoading ? 'Searching...' : 'Find Deals'} <ArrowRight size={18} />
+            </button>
+          </div>
+          {searchSources && (
+            <p className="text-xs text-theme-secondary mt-3">
+              Sources enabled: {searchSources.keepa_enabled ? 'Keepa' : 'Keepa (missing key)'} ·{' '}
+              {searchSources.serpapi_enabled ? 'SerpAPI' : 'SerpAPI (missing key)'}
+            </p>
+          )}
+        </form>
+
+        {searchError && (
+          <div className="mb-8 text-red-400 bg-red-400/10 py-2 px-4 rounded-lg inline-block border border-red-400/20">
+            {searchError}
+          </div>
+        )}
+
+        {searchResults.length > 0 && (
+          <div className="bg-theme-secondary border border-theme rounded-3xl p-6 shadow-xl mb-10">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-theme-primary">Cheapest Deals</h2>
+              <span className="text-sm text-theme-secondary">Ranked by price</span>
+            </div>
+            <div className="space-y-4">
+              {searchResults.map((result, index) => (
+                <div key={`${result.url}-${index}`} className="flex flex-col md:flex-row md:items-center gap-3 bg-glass border border-theme rounded-2xl p-4">
+                  <div className="flex-1">
+                    <p className="text-xs text-theme-secondary">{result.store} · {result.source}</p>
+                    <p className="text-sm font-semibold text-theme-primary truncate" title={result.title}>
+                      {result.title}
+                    </p>
+                    <a
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-theme-primary hover:underline"
+                    >
+                      View product
+                    </a>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-theme-secondary">Rank #{index + 1}</p>
+                    <p className="text-lg font-bold text-theme-primary">₹{result.price.toLocaleString('en-IN')}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-theme-secondary border border-theme rounded-3xl p-6 shadow-xl mb-10">
           <div className="flex flex-col lg:flex-row gap-4 items-stretch">
